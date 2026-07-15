@@ -27,23 +27,25 @@ if "db_initialized" not in st.session_state:
 # --- UI 레이아웃 설정 ---
 st.set_page_config(page_title="Threads 보험 자동화 플랫폼 MVP", layout="wide")
 
-# --- 2. 사이드바: 역할 설정 및 보안 잠금 장치 ---
+# --- 2. 사이드바: 역할 설정 및 완전 은폐형 보안 장치 ---
 st.sidebar.title("💼 서비스 메뉴")
 
 # 기본 모드는 일반 설계사 전용 화면으로 고정합니다.
 app_mode = "💼 보험 설계사 화면 (User)"
 
-# 사이드바 맨 하단에 관리자 암호 입력 칸을 배치합니다.
-st.sidebar.markdown("---")
-admin_password = st.sidebar.text_input("🔑 관리자 인증", type="password", help="관리자 대시보드를 열려면 비밀번호를 입력하세요.")
+# [완전 은폐 보안] 주소창 뒤에 '?admin=1'이 붙어있는지 확인합니다.
+query_params = st.query_params
 
-# 관리자 암호가 일치할 때만 비로소 'Admin 화면'으로 전환할 수 있는 선택창이 활성화됩니다.
-# 아래의 "admin1234" 부분을 변경하여 나만의 고유 관리자 비밀번호를 설정하실 수 있습니다.
-if admin_password == "admin1234":
-    st.sidebar.success("관리자 권한이 승인되었습니다!")
-    app_mode = st.sidebar.selectbox("어드민 메뉴 선택", ["🔑 최고 관리자 화면 (Admin)", "💼 보험 설계사 화면 (User)"])
+if "admin" in query_params:
+    # 오직 주소창에 ?admin=1이 들어간 경우에만 비밀번호 입력 칸이 노출됩니다.
+    st.sidebar.markdown("---")
+    admin_password = st.sidebar.text_input("🔑 관리자 인증", type="password", help="관리자 대시보드를 열려면 비밀번호를 입력하세요.")
+    
+    if admin_password == "admin1234":
+        st.sidebar.success("관리자 권한이 승인되었습니다!")
+        app_mode = st.sidebar.selectbox("어드민 메뉴 선택", ["🔑 최고 관리자 화면 (Admin)", "💼 보험 설계사 화면 (User)"])
 
-# [보안 조치] 사용자가 입력하던 칸을 없애고, Secrets에 저장된 내 API Key를 서버 내부에서 직접 호출합니다.
+# [보안 조치] Secrets에 저장된 내 API Key를 서버 내부에서 직접 호출합니다.
 try:
     openai.api_key = st.secrets["OPENAI_API_KEY"]
 except Exception:
