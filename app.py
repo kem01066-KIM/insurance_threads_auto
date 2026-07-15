@@ -141,10 +141,9 @@ else:
                         추가 정황: {extra_desc if extra_desc else "기본 가이드 기준 스토리 기반 자동 완성"}
                         """
                         
-                        # 구글 제미나이 모델 생성 및 시스템 지침 부여
-                        # 빠른 반응 속도와 준수한 품질을 갖춘 'gemini-1.5-flash' 모델을 기본으로 사용합니다.
+                        # [업데이트 완료] 2026년 최신 2.5 Flash 모델명으로 변경하여 작동 중단 에러를 해결합니다.
                         model = genai.GenerativeModel(
-                            model_name="gemini-1.5-flash",
+                            model_name="gemini-2.5-flash",
                             system_instruction=st.session_state.system_prompt
                         )
                         
