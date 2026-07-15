@@ -1,5 +1,5 @@
 import streamlit as st
-import openai
+import google.generativeai as genai
 
 # --- 1. 가상 데이터베이스 초기화 (Streamlit Session State 활용) ---
 if "db_initialized" not in st.session_state:
@@ -30,14 +30,12 @@ st.set_page_config(page_title="Threads 보험 자동화 플랫폼 MVP", layout="
 # --- 2. 사이드바: 역할 설정 및 완전 은폐형 보안 장치 ---
 st.sidebar.title("💼 서비스 메뉴")
 
-# 기본 모드는 일반 설계사 전용 화면으로 고정합니다.
 app_mode = "💼 보험 설계사 화면 (User)"
 
 # [완전 은폐 보안] 주소창 뒤에 '?admin=1'이 붙어있는지 확인합니다.
 query_params = st.query_params
 
 if "admin" in query_params:
-    # 오직 주소창에 ?admin=1이 들어간 경우에만 비밀번호 입력 칸이 노출됩니다.
     st.sidebar.markdown("---")
     admin_password = st.sidebar.text_input("🔑 관리자 인증", type="password", help="관리자 대시보드를 열려면 비밀번호를 입력하세요.")
     
@@ -45,11 +43,12 @@ if "admin" in query_params:
         st.sidebar.success("관리자 권한이 승인되었습니다!")
         app_mode = st.sidebar.selectbox("어드민 메뉴 선택", ["🔑 최고 관리자 화면 (Admin)", "💼 보험 설계사 화면 (User)"])
 
-# [보안 조치] Secrets에 저장된 내 API Key를 서버 내부에서 직접 호출합니다.
+# [보안 조치] Secrets에 저장된 내 구글 Gemini API Key를 불러와 연동합니다.
 try:
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    gemini_ready = True
 except Exception:
-    openai.api_key = None
+    gemini_ready = False
 
 # --- 3. 🔑 최고 관리자 화면 (Admin) ---
 if app_mode == "🔑 최고 관리자 화면 (Admin)":
@@ -128,10 +127,10 @@ else:
         extra_desc = col_r.text_area("사례나 추가로 넣고 싶은 세부 정황 (선택사항)", placeholder="예: 40대 가장이 갑자기 암에 걸렸으나 미리 넉넉히 준비한 진단금으로 생활비 걱정 없이 위기를 넘긴 사례")
 
         if st.button("🚀 오늘의 콘텐츠 & 무료 소책자 초안 세트 생성하기"):
-            if not openai.api_key:
-                st.warning("플랫폼 관리자 설정에 OpenAI API Key가 등록되지 않았습니다. (Streamlit Secrets 설정을 확인해 주셔요.)")
+            if not gemini_ready:
+                st.warning("플랫폼 관리자 설정에 Gemini API Key가 등록되지 않았습니다. (Streamlit Secrets 설정을 확인해 주셔요.)")
             else:
-                with st.spinner("AI가 고품질 스레드와 배포용 1페이지 소책자를 동시 집필 중입니다..."):
+                with st.spinner("구글 Gemini가 고품질 스레드와 배포용 1페이지 소책자를 동시 집필 중입니다..."):
                     try:
                         user_prompt = f"""
                         설계사 정보:
@@ -142,16 +141,15 @@ else:
                         추가 정황: {extra_desc if extra_desc else "기본 가이드 기준 스토리 기반 자동 완성"}
                         """
                         
-                        response = openai.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {"role": "system", "content": st.session_state.system_prompt},
-                                {"role": "user", "content": user_prompt}
-                            ],
-                            temperature=0.75
+                        # 구글 제미나이 모델 생성 및 시스템 지침 부여
+                        # 빠른 반응 속도와 준수한 품질을 갖춘 'gemini-1.5-flash' 모델을 기본으로 사용합니다.
+                        model = genai.GenerativeModel(
+                            model_name="gemini-1.5-flash",
+                            system_instruction=st.session_state.system_prompt
                         )
                         
-                        result_text = response.choices[0].message.content
+                        response = model.generate_content(user_prompt)
+                        result_text = response.text
                         
                         for u in st.session_state.users:
                             if u["id"] == current_user["id"]:
